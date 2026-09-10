@@ -1,0 +1,35 @@
+{
+  "name": "bulkframe",
+  "description": "Scan pages, filter images, and download exactly what you need.",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "compile": "tsc --noEmit",
+    "postinstall": "wxt prepare",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "dexie": "^4.0.11",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.544.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@wxt-dev/module-react": "^1.1.5",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.3",
+    "web-ext": "^10.5.0",
+    "wxt": "^0.21.3"
+  }
+}
