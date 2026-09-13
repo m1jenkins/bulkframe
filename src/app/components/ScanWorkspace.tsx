@@ -10,7 +10,7 @@ import { sendRuntime } from '../../lib/messaging';
 import type { FilterState, ImageCandidate, ScanRecord, Workflow } from '../../lib/types';
 import { IconButton } from './IconButton';
 import { ImageGrid } from './ImageGrid';
-import { FilterPanel } from './FilterPanel';
+import { FilterBar, FilterPanel } from './FilterPanel';
 import { FooterBar } from './FooterBar';
 import { PreviewModal } from './PreviewModal';
 import { useLiveQuery } from '../useLiveQuery';
@@ -26,7 +26,8 @@ export function ScanWorkspace({
   compact?: boolean;
   onOpenFull?: () => void;
 }) {
-  const [view, setView] = useState<'grid' | 'filters' | 'list'>('grid');
+  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>(emptyFilters());
   const [sort, setSort] = useState<SortKey>('pixels');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -107,7 +108,8 @@ export function ScanWorkspace({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-[var(--text-muted)]">
         <div>
-          {visible.length} images · {formatBytes(totalBytes(visible))}
+          {visible.length}
+          {visible.length !== scan.images.length ? ` of ${scan.images.length}` : ''} images · {formatBytes(totalBytes(visible))}
         </div>
         <select
           className="rounded-md border border-[var(--line)] bg-[var(--bg-elev)] px-1 py-0.5"
@@ -120,11 +122,12 @@ export function ScanWorkspace({
           <option value="type">Type</option>
         </select>
       </div>
+      <FilterBar filters={filters} images={scan.images} onChange={setFilters} />
       <div className="flex items-center gap-1 px-2">
         <IconButton label="Grid" active={view === 'grid'} onClick={() => setView('grid')}>
           <LayoutGrid size={16} />
         </IconButton>
-        <IconButton label="Filters" active={view === 'filters'} onClick={() => setView('filters')}>
+        <IconButton label="More filters" active={showFilters} onClick={() => setShowFilters((open) => !open)}>
           <SlidersHorizontal size={16} />
         </IconButton>
         <IconButton label="List" active={view === 'list'} onClick={() => setView('list')}>
@@ -147,21 +150,25 @@ export function ScanWorkspace({
           </button>
         )}
       </div>
+      {showFilters && (
+        <FilterPanel filters={filters} images={scan.images} onChange={setFilters} onSave={saveFilters} />
+      )}
       <div className="min-h-0 flex-1">
-        {view === 'filters' ? (
-          <FilterPanel filters={filters} images={scan.images} onChange={setFilters} onSave={saveFilters} />
-        ) : (
-          <ImageGrid
-            images={visible}
-            selected={selected}
-            favorites={favoriteUrls}
-            list={view === 'list'}
-            compact={compact}
-            onToggle={toggle}
-            onFavorite={favorite}
-            onOpen={setPreview}
-          />
-        )}
+        <ImageGrid
+          images={visible}
+          selected={selected}
+          favorites={favoriteUrls}
+          list={view === 'list'}
+          compact={compact}
+          onToggle={toggle}
+          onFavorite={favorite}
+          onOpen={setPreview}
+          emptyHint={
+            scan.images.length > 0 && visible.length === 0 && filters.quality !== 'any'
+              ? 'Try Quality → Any to include thumbnails and icons.'
+              : undefined
+          }
+        />
       </div>
       {status && <div className="px-3 pb-1 text-xs text-[var(--text-muted)]">{status}</div>}
       <FooterBar

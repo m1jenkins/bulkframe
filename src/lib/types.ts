@@ -6,9 +6,15 @@ export type ImageType =
   | 'svg'
   | 'tiff'
   | 'webp'
+  | 'mp4'
+  | 'webm'
   | 'other';
 
 export type Orientation = 'portrait' | 'landscape' | 'square';
+
+export type MediaQuality = 'any' | 'good' | 'high';
+
+export type MediaKind = 'photo' | 'gif' | 'video' | 'other';
 
 export type DownloadFormat = 'original' | 'jpg' | 'png';
 
@@ -30,6 +36,8 @@ export const IMAGE_TYPES: ImageType[] = [
   'svg',
   'tiff',
   'webp',
+  'mp4',
+  'webm',
   'other',
 ];
 
@@ -41,8 +49,41 @@ export const TYPE_LABELS: Record<ImageType, string> = {
   svg: 'SVG',
   tiff: 'TIFF',
   webp: 'WebP',
+  mp4: 'MP4',
+  webm: 'WebM',
   other: 'Other',
 };
+
+export const MEDIA_QUALITIES: MediaQuality[] = ['any', 'good', 'high'];
+
+export const QUALITY_LABELS: Record<MediaQuality, string> = {
+  any: 'Any',
+  good: 'Hide low',
+  high: 'High only',
+};
+
+export const MEDIA_KINDS: MediaKind[] = ['photo', 'gif', 'video', 'other'];
+
+export const KIND_LABELS: Record<MediaKind, string> = {
+  photo: 'Photos',
+  gif: 'GIFs',
+  video: 'Videos',
+  other: 'Other',
+};
+
+export const KIND_TYPES: Record<MediaKind, ImageType[]> = {
+  photo: ['jpeg', 'png', 'webp', 'bmp', 'tiff'],
+  gif: ['gif'],
+  video: ['mp4', 'webm'],
+  other: ['svg', 'other'],
+};
+
+export function kindOf(type: ImageType): MediaKind {
+  if (type === 'gif') return 'gif';
+  if (type === 'mp4' || type === 'webm') return 'video';
+  if (type === 'svg' || type === 'other') return 'other';
+  return 'photo';
+}
 
 export interface ImageCandidate {
   id: string;
@@ -122,7 +163,9 @@ export interface FilterState {
   types: ImageType[];
   minBytes?: number;
   maxBytes?: number;
+  minEdge?: number;
   hideDuplicates: boolean;
+  quality: MediaQuality;
   similarGroup?: string;
 }
 
@@ -166,6 +209,7 @@ export const DEFAULT_FILTERS: FilterState = {
   orientations: [],
   types: [],
   hideDuplicates: false,
+  quality: 'good',
 };
 
 export const DEFAULT_SETTINGS: Settings = {

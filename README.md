@@ -22,7 +22,7 @@ Pin Bulkframe from the extensions menu.
 1. Open a regular `http` or `https` page.
 2. Click the Bulkframe icon and press **Search images**.
 3. The first scan asks for permission to read images on websites. Allow it.
-4. Filter by type, size, or orientation, select images, then **Download Selected**.
+4. Filter by quality, type, size, or orientation, select images, then **Download Selected**. Quality defaults to **Hide low** (icons, thumbs, and tiny clips).
 5. **Open in Full Mode** for scan history, Mass Scan, Favorites, Library, Rules, Analytics, and Settings.
 
 The **wand** icon turns on Magic Wand: hover images on the page to download them or add them to a tray.

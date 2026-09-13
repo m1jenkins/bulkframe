@@ -11,6 +11,7 @@ export function ImageGrid({
   onOpen,
   list,
   compact,
+  emptyHint,
 }: {
   images: ImageCandidate[];
   selected: Set<string>;
@@ -20,11 +21,15 @@ export function ImageGrid({
   onOpen: (index: number) => void;
   list?: boolean;
   compact?: boolean;
+  emptyHint?: string;
 }) {
   if (!images.length) {
     return (
       <div className="grid h-full place-items-center px-6 text-center text-sm text-[var(--text-muted)]">
-        No images match the current filters.
+        <div>
+          <p>No images match the current filters.</p>
+          {emptyHint && <p className="mt-1 text-xs">{emptyHint}</p>}
+        </div>
       </div>
     );
   }
