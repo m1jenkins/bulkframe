@@ -1,7 +1,10 @@
+import { joinDownloadPath } from './downloadPath';
 import { extFromFilename } from './images';
 import { orientationOf } from './images';
 import { domainFromUrl } from './pages';
 import type { ConflictAction, DownloadRule, ImageCandidate } from './types';
+
+export { joinDownloadPath };
 
 export function matchRule(rule: DownloadRule, image: ImageCandidate): boolean {
   if (!rule.enabled) return false;
@@ -27,14 +30,6 @@ export function firstMatchingRule(rules: DownloadRule[], image: ImageCandidate):
   return [...rules]
     .sort((a, b) => a.order - b.order)
     .find((rule) => matchRule(rule, image));
-}
-
-export function joinDownloadPath(folder: string | undefined, filename: string): string {
-  const cleanFolder = (folder || '')
-    .replace(/^[\\/]+/, '')
-    .replace(/\.\./g, '')
-    .replace(/\\/g, '/');
-  return cleanFolder ? `${cleanFolder.replace(/\/$/, '')}/${filename}` : filename;
 }
 
 export function conflictFor(rules: DownloadRule[], image: ImageCandidate, fallback: ConflictAction): ConflictAction {

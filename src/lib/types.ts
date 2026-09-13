@@ -18,7 +18,7 @@ export type MediaKind = 'photo' | 'gif' | 'video' | 'other';
 
 export type DownloadFormat = 'original' | 'jpg' | 'png';
 
-export type Workflow = 'popup' | 'dashboard' | 'wand';
+export type Workflow = 'popup' | 'dashboard' | 'wand' | 'schedule';
 
 export type ConflictAction = 'uniquify' | 'overwrite' | 'prompt';
 
@@ -26,7 +26,9 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 
 export type VisualStyle = 'default' | 'graphite' | 'ocean' | 'ember' | 'jade';
 
-export type ScanSource = 'page' | 'tabs' | 'links';
+export type ScanSource = 'page' | 'tabs' | 'links' | 'schedule';
+
+export const WORKFLOWS: Workflow[] = ['popup', 'dashboard', 'wand', 'schedule'];
 
 export const IMAGE_TYPES: ImageType[] = [
   'jpeg',
@@ -96,6 +98,7 @@ export interface ImageCandidate {
   type: ImageType;
   filename: string;
   alt?: string;
+  poster?: string;
   source: 'img' | 'srcset' | 'background' | 'video' | 'canvas' | 'meta' | 'svg';
   hash?: string;
   fetchError?: string;
@@ -169,6 +172,25 @@ export interface FilterState {
   similarGroup?: string;
 }
 
+export interface ScheduledScan {
+  id: string;
+  createdAt: number;
+  url: string;
+  time: string;
+  destFolder: string;
+  download: boolean;
+  enabled: boolean;
+  name: string;
+  armedAt: number;
+  filters: FilterState;
+  lastRunAt?: number;
+  lastAttemptAt?: number;
+  lastError?: string;
+  lastScanId?: string;
+  lastCount?: number;
+  lastDownloaded?: number;
+}
+
 export interface SavedSearch {
   id: string;
   name: string;
@@ -184,6 +206,7 @@ export interface Settings {
   downloadFormat: DownloadFormat;
   skipTypes: ImageType[];
   skip1x1: boolean;
+  skipRedditAvatars: boolean;
   theme: ThemeMode;
   style: VisualStyle;
   renameEnabled: boolean;
@@ -219,6 +242,7 @@ export const DEFAULT_SETTINGS: Settings = {
   downloadFormat: 'original',
   skipTypes: [],
   skip1x1: true,
+  skipRedditAvatars: true,
   theme: 'system',
   style: 'default',
   renameEnabled: false,

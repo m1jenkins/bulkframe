@@ -1,14 +1,9 @@
-import type {
-  DownloadFormat,
-  ImageCandidate,
-  ImageType,
-  ScanSource,
-  Workflow,
-} from './types';
+import type { DownloadFormat, FilterState, ImageCandidate, ImageType, ScanSource, Workflow } from './types';
+import type { FolderWriteResult } from './folderWrite';
 
 export type Msg =
   | { type: 'PING' }
-  | { type: 'SCAN_PAGE'; skip1x1: boolean; skipTypes: ImageType[] }
+  | { type: 'SCAN_PAGE'; skip1x1: boolean; skipRedditAvatars: boolean; skipTypes: ImageType[] }
   | { type: 'WAND_START' }
   | { type: 'WAND_STOP' }
   | {
@@ -30,6 +25,28 @@ export type Msg =
   | {
       type: 'MASS_SCAN_URLS';
       urls: string[];
+    }
+  | {
+      type: 'SCHEDULE_UPSERT';
+      schedule: {
+        id?: string;
+        url: string;
+        time: string;
+        destFolder?: string;
+        download?: boolean;
+        enabled?: boolean;
+        name?: string;
+        filters?: FilterState;
+      };
+    }
+  | { type: 'SCHEDULE_DELETE'; id: string }
+  | { type: 'SCHEDULE_RUN'; id: string }
+  | { type: 'FOLDER_WRITE_JOB'; jobId: string }
+  | {
+      type: 'FOLDER_WRITE_DONE';
+      jobId: string;
+      error?: string;
+      result?: FolderWriteResult;
     }
   | { type: 'OPEN_DASHBOARD'; scanId?: string; view?: string }
   | { type: 'OPEN_SIDE_PANEL' }

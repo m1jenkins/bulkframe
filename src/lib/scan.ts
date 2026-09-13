@@ -1,6 +1,8 @@
 import { hashString, uid } from './ids';
-import { filenameFromUrl, inferType, largestSrcsetUrl } from './images';
+import { filenameFromUrl, inferType, largestSrcsetUrl, withoutRedditAvatars } from './images';
+import { upgradeRedgifsMediaUrl } from './redgifs.ts';
 import type { ImageCandidate, ImageType } from './types';
+import { pickVideoFile } from './videoScan.ts';
 
 function absUrl(url: string, base = location.href): string | null {
   if (!url || url.startsWith('data:text/html')) return null;
@@ -30,15 +32,19 @@ function pushCandidate(
   rawUrl: string,
   extra: Partial<ImageCandidate> & Pick<ImageCandidate, 'source'>,
 ) {
-  const url = absUrl(rawUrl);
-  if (!url) return;
+  const resolved = absUrl(rawUrl);
+  if (!resolved) return;
+  const upgraded = upgradeRedgifsMediaUrl(resolved);
+  const url = upgraded?.url ?? resolved;
   if (url.startsWith('data:') && url.length < 32) return;
   const existing = map.get(url);
+  const poster = extra.poster || upgraded?.poster;
   if (existing) {
     if ((extra.width ?? 0) > (existing.width ?? 0)) {
       existing.width = extra.width;
       existing.height = extra.height;
     }
+    if (poster && !existing.poster) existing.poster = poster;
     return;
   }
   const filename = extra.filename || filenameFromUrl(url);
@@ -54,11 +60,13 @@ function pushCandidate(
     mime: extra.mime,
     alt: extra.alt,
     byteSize: extra.byteSize,
+    poster,
   });
 }
 
 export interface ScanOptions {
   skip1x1: boolean;
+  skipRedditAvatars: boolean;
   skipTypes: ImageType[];
 }
 
@@ -94,10 +102,38 @@ export function scanDocument(options: ScanOptions): ImageCandidate[] {
     if (url) pushCandidate(map, url, { source: 'srcset' });
   });
 
-  document.querySelectorAll('video[poster]').forEach((el) => {
-    const poster = el.getAttribute('poster');
-    if (poster) pushCandidate(map, poster, { source: 'video' });
+  document.querySelectorAll('video').forEach((el) => {
+    const video = el as HTMLVideoElement;
+    const poster = video.getAttribute('poster') || undefined;
+    const sourceSrcs = [...video.querySelectorAll('source')]
+      .map((source) => source.getAttribute('src') || '')
+      .filter(Boolean);
+    const picked = pickVideoFile({
+      src: video.getAttribute('src') || undefined,
+      currentSrc: video.currentSrc || undefined,
+      poster,
+      sourceSrcs,
+    });
+    const width = video.videoWidth || video.width || undefined;
+    const height = video.videoHeight || video.height || undefined;
+    if (picked) {
+      pushCandidate(map, picked.url, {
+        source: 'video',
+        width,
+        height,
+        poster: picked.poster,
+      });
+      return;
+    }
+    if (poster) pushCandidate(map, poster, { source: 'video', width, height });
   });
+
+  document
+    .querySelectorAll('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"]')
+    .forEach((el) => {
+      const content = el.getAttribute('content');
+      if (content) pushCandidate(map, content, { source: 'video' });
+    });
 
   document.querySelectorAll('image, svg image').forEach((el) => {
     const href = el.getAttribute('href') || el.getAttribute('xlink:href');
@@ -147,6 +183,7 @@ export function scanDocument(options: ScanOptions): ImageCandidate[] {
   if (options.skip1x1) {
     images = images.filter((img) => !(img.width === 1 && img.height === 1));
   }
+  images = withoutRedditAvatars(images, options.skipRedditAvatars);
   if (options.skipTypes.length) {
     images = images.filter((img) => !options.skipTypes.includes(img.type));
   }
@@ -164,10 +201,38 @@ export function describePage() {
 export function findImageAtPoint(x: number, y: number): ImageCandidate | null {
   const node = document.elementFromPoint(x, y);
   if (!node) return null;
+  const video = node instanceof HTMLVideoElement ? node : node.closest('video');
+  if (video instanceof HTMLVideoElement) {
+    const poster = video.getAttribute('poster') || undefined;
+    const sourceSrcs = [...video.querySelectorAll('source')]
+      .map((source) => source.getAttribute('src') || '')
+      .filter(Boolean);
+    const picked = pickVideoFile({
+      src: video.getAttribute('src') || undefined,
+      currentSrc: video.currentSrc || undefined,
+      poster,
+      sourceSrcs,
+    });
+    const url = absUrl(picked?.url || poster || '');
+    if (!url) return null;
+    return {
+      id: `img_${hashString(url)}`,
+      url,
+      pageUrl: location.href,
+      width: video.videoWidth || undefined,
+      height: video.videoHeight || undefined,
+      type: inferType(url),
+      filename: filenameFromUrl(url),
+      source: 'video',
+      poster: picked?.poster || poster,
+    };
+  }
   const img = node instanceof HTMLImageElement ? node : node.closest('img');
   if (img instanceof HTMLImageElement) {
-    const url = img.currentSrc || img.src;
-    if (!url) return null;
+    const raw = img.currentSrc || img.src;
+    if (!raw) return null;
+    const upgraded = upgradeRedgifsMediaUrl(raw);
+    const url = upgraded?.url || raw;
     return {
       id: `img_${hashString(url)}`,
       url,
@@ -178,6 +243,7 @@ export function findImageAtPoint(x: number, y: number): ImageCandidate | null {
       filename: filenameFromUrl(url),
       source: 'img',
       alt: img.alt || undefined,
+      poster: upgraded?.poster,
     };
   }
   const el = node instanceof HTMLElement ? node : node.parentElement;
@@ -185,8 +251,10 @@ export function findImageAtPoint(x: number, y: number): ImageCandidate | null {
     const bg = getComputedStyle(el).backgroundImage;
     const urls = cssUrls(bg);
     if (urls[0]) {
-      const url = absUrl(urls[0]);
-      if (!url) return null;
+      const resolved = absUrl(urls[0]);
+      if (!resolved) return null;
+      const upgraded = upgradeRedgifsMediaUrl(resolved);
+      const url = upgraded?.url ?? resolved;
       return {
         id: `img_${hashString(url)}`,
         url,
@@ -194,6 +262,7 @@ export function findImageAtPoint(x: number, y: number): ImageCandidate | null {
         type: inferType(url),
         filename: filenameFromUrl(url),
         source: 'background',
+        poster: upgraded?.poster,
       };
     }
   }

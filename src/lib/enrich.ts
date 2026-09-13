@@ -1,4 +1,4 @@
-import { inferType, sniffType } from './images';
+import { inferType, isVideoType, sniffType } from './images';
 import type { ImageCandidate } from './types';
 
 async function headSize(url: string): Promise<{ byteSize?: number; mime?: string }> {
@@ -49,11 +49,12 @@ export async function enrichImages(
       const item = queue.shift()!;
       const next = { ...item };
       try {
+        const skipDims = Boolean(next.width && next.height) || isVideoType(next.type);
         const [head, dims] = await Promise.all([
           next.byteSize
             ? Promise.resolve({ byteSize: undefined as number | undefined, mime: undefined as string | undefined })
             : headSize(next.url),
-          next.width && next.height
+          skipDims
             ? Promise.resolve({ width: undefined as number | undefined, height: undefined as number | undefined })
             : loadDimensions(next.url),
         ]);

@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   applyFilters,
+  applyScheduleFilters,
   emptyFilters,
   isKindActive,
   matchesFilter,
   mediaQuality,
+  normalizeFilters,
+  summarizeFilters,
   toggleKind,
 } from './filters.ts';
 import type { FilterState, ImageCandidate } from './types.ts';
@@ -88,4 +91,43 @@ test('kind chips isolate then combine media types', () => {
   assert.equal(isKindActive([], 'photo'), false);
   assert.equal(isKindActive(photosAndGifs, 'photo'), true);
   assert.equal(isKindActive(photosAndGifs, 'video'), false);
+});
+
+test('normalizeFilters fills defaults and drops junk', () => {
+  const next = normalizeFilters({
+    quality: 'high',
+    types: ['jpeg', 'exe'] as FilterState['types'],
+    orientations: ['portrait', 'tilt'] as FilterState['orientations'],
+    hideDuplicates: true,
+    minEdge: 640,
+    minWidth: -1,
+  });
+  assert.equal(next.quality, 'high');
+  assert.deepEqual(next.types, ['jpeg']);
+  assert.deepEqual(next.orientations, ['portrait']);
+  assert.equal(next.hideDuplicates, true);
+  assert.equal(next.minEdge, 640);
+  assert.equal(next.minWidth, undefined);
+  assert.equal(normalizeFilters(undefined).quality, 'good');
+});
+
+test('scheduled filters default to Hide low and keep matching photos', () => {
+  const tiny = cand({ id: 'tiny', url: 'https://example.com/t.jpg', width: 64, height: 64 });
+  const photo = cand({ id: 'photo', url: 'https://example.com/a.jpg', width: 1200, height: 800 });
+  const dup = cand({
+    id: 'dup',
+    url: 'https://example.com/a.jpg?size=1',
+    width: 1200,
+    height: 800,
+  });
+  const kept = applyScheduleFilters([tiny, photo, dup], { hideDuplicates: true });
+  assert.deepEqual(
+    kept.map((img) => img.id),
+    ['photo'],
+  );
+});
+
+test('summarizeFilters names the quality default', () => {
+  assert.equal(summarizeFilters(emptyFilters()), 'Hide low');
+  assert.match(summarizeFilters({ ...emptyFilters(), hideDuplicates: true, minEdge: 1080 }), /Hide dups/);
 });

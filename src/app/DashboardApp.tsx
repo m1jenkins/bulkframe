@@ -6,6 +6,7 @@ import type { ScanRecord } from '../lib/types';
 import { ScanList } from './components/ScanList';
 import { ScanWorkspace } from './components/ScanWorkspace';
 import { MassScanPage } from './pages/MassScanPage';
+import { ScheduledPage } from './pages/ScheduledPage';
 import { FavoritesPage } from './pages/FavoritesPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { RulesPage } from './pages/RulesPage';
@@ -14,10 +15,12 @@ import { SettingsPage } from './pages/SettingsPage';
 import { useSettings } from './useSettings';
 import { cx } from './ui';
 import { Frame } from 'lucide-react';
+import { MediaThumb } from './components/MediaThumb';
 
 const NAV = [
   { id: 'scans', label: 'Scan Results' },
   { id: 'mass', label: 'Mass Scan' },
+  { id: 'scheduled', label: 'Scheduled' },
   { id: 'favorites', label: 'Favorites' },
   { id: 'library', label: 'Library' },
   { id: 'rules', label: 'Rules' },
@@ -82,6 +85,9 @@ export function DashboardApp() {
           </>
         )}
         {view === 'mass' && <MassScanPage onOpenScan={(id) => void db.scans.get(id).then((s) => s && (setScan(s), setView('scans')))} />}
+        {view === 'scheduled' && (
+          <ScheduledPage onOpenScan={(id) => void db.scans.get(id).then((s) => s && (setScan(s), setView('scans')))} />
+        )}
         {view === 'favorites' && <FavoritesPage />}
         {view === 'library' && <LibraryPage />}
         {view === 'rules' && <RulesPage />}
@@ -138,7 +144,7 @@ function SimilarPage({ scan }: { scan: ScanRecord | null }) {
               {ids.map((id) => {
                 const img = byId.get(id);
                 if (!img) return null;
-                return <img key={id} src={img.url} alt="" className="h-24 w-24 rounded-lg object-cover" />;
+                return <MediaThumb key={id} image={img} className="h-24 w-24 rounded-lg object-cover" alt="" />;
               })}
             </div>
           </div>

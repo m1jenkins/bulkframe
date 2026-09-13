@@ -11,6 +11,9 @@ const EXT_MAP: Record<string, ImageType> = {
   tif: 'tiff',
   tiff: 'tiff',
   webp: 'webp',
+  mp4: 'mp4',
+  m4v: 'mp4',
+  webm: 'webm',
   avif: 'other',
   ico: 'other',
 };
@@ -25,6 +28,8 @@ const MIME_MAP: Record<string, ImageType> = {
   'image/svg+xml': 'svg',
   'image/tiff': 'tiff',
   'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
 };
 
 export function filenameFromUrl(url: string): string {
@@ -45,13 +50,14 @@ export function extFromFilename(name: string): string {
 }
 
 export function inferType(url: string, mime?: string, filename?: string): ImageType {
+  const name = filename || filenameFromUrl(url);
+  const ext = extFromFilename(name);
+  if (ext === 'mp4' || ext === 'm4v' || ext === 'webm') return EXT_MAP[ext] ?? 'other';
   if (mime) {
     const key = mime.split(';')[0]?.trim().toLowerCase() ?? mime;
     if (MIME_MAP[key]) return MIME_MAP[key];
     if (key.startsWith('image/')) return 'other';
   }
-  const name = filename || filenameFromUrl(url);
-  const ext = extFromFilename(name);
   if (EXT_MAP[ext]) return EXT_MAP[ext];
   const path = url.toLowerCase();
   for (const [k, v] of Object.entries(EXT_MAP)) {
@@ -60,7 +66,16 @@ export function inferType(url: string, mime?: string, filename?: string): ImageT
   return 'other';
 }
 
+export function isVideoType(type: ImageType): boolean {
+  return type === 'mp4' || type === 'webm';
+}
+
+export function previewUrl(image: { url: string; poster?: string; type: ImageType }): string {
+  return image.poster || image.url;
+}
+
 export function typeToExt(type: ImageType, format?: 'original' | 'jpg' | 'png'): string {
+  if (isVideoType(type)) return type;
   if (format === 'jpg') return 'jpg';
   if (format === 'png') return 'png';
   switch (type) {
@@ -73,6 +88,33 @@ export function typeToExt(type: ImageType, format?: 'original' | 'jpg' | 'png'):
     default:
       return type;
   }
+}
+
+export function isRedditAvatar(image: { url: string; width?: number; height?: number }): boolean {
+  let host = '';
+  let path = '';
+  try {
+    const parsed = new URL(image.url);
+    host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+    path = parsed.pathname;
+  } catch {
+    return false;
+  }
+
+  if (host === 'redditstatic.com' && /\/avatars\//i.test(path)) return true;
+  if (host === 'i.redd.it' && /\/snoovatar\//i.test(path)) return true;
+  if (host.endsWith('redditmedia.com') && /profileIcon|communityIcon/i.test(path)) return true;
+
+  const square256 = image.width === 256 && image.height === 256;
+  return square256 && (host === 'redditstatic.com' || host === 'styles.redditmedia.com');
+}
+
+export function withoutRedditAvatars<T extends { url: string; width?: number; height?: number }>(
+  images: T[],
+  skip: boolean,
+): T[] {
+  if (!skip) return images;
+  return images.filter((image) => !isRedditAvatar(image));
 }
 
 export function orientationOf(width?: number, height?: number): Orientation | undefined {
@@ -142,6 +184,12 @@ const MAGIC: Array<{ type: ImageType; mime: string; test: (b: Uint8Array) => boo
   { type: 'webp', mime: 'image/webp', test: (b) => b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50 },
   { type: 'bmp', mime: 'image/bmp', test: (b) => b[0] === 0x42 && b[1] === 0x4d },
   { type: 'tiff', mime: 'image/tiff', test: (b) => (b[0] === 0x49 && b[1] === 0x49) || (b[0] === 0x4d && b[1] === 0x4d) },
+  {
+    type: 'mp4',
+    mime: 'video/mp4',
+    test: (b) => b.length >= 8 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70,
+  },
+  { type: 'webm', mime: 'video/webm', test: (b) => b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3 },
 ];
 
 export function sniffType(bytes: Uint8Array): { type: ImageType; mime: string } | undefined {

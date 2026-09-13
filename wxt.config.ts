@@ -38,6 +38,7 @@ export default defineConfig({
       'clipboardWrite',
       'offscreen',
       'activeTab',
+      'alarms',
     ],
     optional_host_permissions: ['<all_urls>'],
     host_permissions: [],

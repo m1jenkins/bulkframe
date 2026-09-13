@@ -134,11 +134,13 @@ export function FilterPanel({
   images,
   onChange,
   onSave,
+  embedded,
 }: {
   filters: FilterState;
   images: ImageCandidate[];
   onChange: (filters: FilterState) => void;
   onSave?: () => void;
+  embedded?: boolean;
 }) {
   const counts = typeCounts(images);
   function patch(partial: Partial<FilterState>) {
@@ -153,7 +155,13 @@ export function FilterPanel({
   const customSize = filters.maxBytes != null;
 
   return (
-    <div className="bf-scroll max-h-[46%] space-y-3 overflow-auto border-b border-[var(--line)] px-3 py-2 text-sm">
+    <div
+      className={
+        embedded
+          ? 'space-y-3 text-sm'
+          : 'bf-scroll max-h-[46%] space-y-3 overflow-auto border-b border-[var(--line)] px-3 py-2 text-sm'
+      }
+    >
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-[var(--text-muted)]">
           Hide low drops icons, thumbs, and tiny clips. High only keeps HD-ish files.
@@ -261,7 +269,8 @@ export function FilterPanel({
                 patch({ types: !next.length || next.length === IMAGE_TYPES.length ? [] : next });
               }}
             >
-              {TYPE_LABELS[type]} {counts[type]}
+              {TYPE_LABELS[type]}
+              {images.length ? ` ${counts[type]}` : ''}
             </Chip>
           ))}
         </div>

@@ -1,6 +1,17 @@
+import { duplicateIds } from './hash.ts';
 import { orientationOf, resolutionBucket } from './images.ts';
-import type { FilterState, ImageCandidate, ImageType, MediaKind, MediaQuality } from './types.ts';
-import { DEFAULT_FILTERS, IMAGE_TYPES, KIND_TYPES, MEDIA_KINDS, kindOf } from './types.ts';
+import type { FilterState, ImageCandidate, ImageType, MediaKind, MediaQuality, Orientation } from './types.ts';
+import {
+  DEFAULT_FILTERS,
+  IMAGE_TYPES,
+  KIND_LABELS,
+  KIND_TYPES,
+  MEDIA_KINDS,
+  MEDIA_QUALITIES,
+  QUALITY_LABELS,
+  TYPE_LABELS,
+  kindOf,
+} from './types.ts';
 
 export function emptyFilters(): FilterState {
   return {
@@ -10,6 +21,65 @@ export function emptyFilters(): FilterState {
     quality: 'good',
     hideDuplicates: false,
   };
+}
+
+function optionalFinite(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+export function normalizeFilters(input?: Partial<FilterState> | null): FilterState {
+  const base = emptyFilters();
+  if (!input || typeof input !== 'object') return base;
+  const orientations = Array.isArray(input.orientations)
+    ? input.orientations.filter((value): value is Orientation =>
+        value === 'portrait' || value === 'landscape' || value === 'square',
+      )
+    : [];
+  const types = Array.isArray(input.types)
+    ? input.types.filter((value): value is ImageType => IMAGE_TYPES.includes(value))
+    : [];
+  const quality = MEDIA_QUALITIES.includes(input.quality as MediaQuality)
+    ? (input.quality as MediaQuality)
+    : base.quality;
+  return {
+    ...base,
+    quality,
+    orientations,
+    types,
+    hideDuplicates: Boolean(input.hideDuplicates),
+    minWidth: optionalFinite(input.minWidth),
+    minHeight: optionalFinite(input.minHeight),
+    maxWidth: optionalFinite(input.maxWidth),
+    maxHeight: optionalFinite(input.maxHeight),
+    minBytes: optionalFinite(input.minBytes),
+    maxBytes: optionalFinite(input.maxBytes),
+    minEdge: optionalFinite(input.minEdge),
+  };
+}
+
+export function applyScheduleFilters(
+  images: ImageCandidate[],
+  filters?: Partial<FilterState> | null,
+): ImageCandidate[] {
+  const next = normalizeFilters(filters);
+  return applyFilters(images, next, duplicateIds(images));
+}
+
+export function summarizeFilters(filters: FilterState): string {
+  const parts: string[] = [QUALITY_LABELS[filters.quality ?? 'good']];
+  const kinds = MEDIA_KINDS.filter((kind) => isKindActive(filters.types, kind));
+  if (kinds.length && kinds.length < MEDIA_KINDS.length) {
+    parts.push(kinds.map((kind) => KIND_LABELS[kind]).join(', '));
+  } else if (filters.types.length) {
+    parts.push(filters.types.map((type) => TYPE_LABELS[type]).join(', '));
+  }
+  if (filters.hideDuplicates) parts.push('Hide dups');
+  if (filters.minEdge) parts.push(`${filters.minEdge}px+`);
+  if (filters.minBytes) parts.push(`${Math.round(filters.minBytes / 1024)} KB+`);
+  if (filters.orientations.length) {
+    parts.push(filters.orientations.map((value) => value[0]!.toUpperCase() + value.slice(1)).join('/'));
+  }
+  return parts.join(' · ');
 }
 
 export type QualityTier = 'low' | 'good' | 'high';
